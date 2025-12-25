@@ -11,37 +11,38 @@ export default function ScheduleAppointment() {
   const [doctors, setDoctors] = useState([]);
   const [upcoming, setUpcoming] = useState([]);
 
+  //  feedback state
+  const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+
   useEffect(() => {
     const u = JSON.parse(localStorage.getItem("user"));
     setUser(u);
 
-    // Fetch doctors
     fetch("http://localhost:8080/api/users")
       .then((res) => res.json())
       .then((data) => {
-        const docList = data.filter((u) => u.role === "DOCTOR");
-        setDoctors(docList);
+        setDoctors(data.filter((u) => u.role === "DOCTOR"));
       });
 
     if (u?.id) {
-      // Fetch upcoming appointments
       fetch(`http://localhost:8080/api/appointments/patient/${u.id}`)
         .then((res) => res.json())
-        .then((data) => {
-          
-          const upcomingSorted = data.sort(
-            (a, b) => new Date(a.date) - new Date(b.date)
-          );
-          setUpcoming(upcomingSorted);
-        });
+        .then((data) =>
+          setUpcoming(
+            data.sort((a, b) => new Date(a.date) - new Date(b.date))
+          )
+        );
     }
   }, []);
 
   const handleSchedule = async (e) => {
     e.preventDefault();
+    setErrorMsg("");
+    setSuccessMsg("");
 
-    if (!user) {
-      alert("User not found.");
+    if (!user || !doctorId || !date || !reason) {
+      setErrorMsg("Please fill in all required fields.");
       return;
     }
 
@@ -53,19 +54,35 @@ export default function ScheduleAppointment() {
       doctor: { id: doctorId },
     };
 
-    const res = await fetch("http://localhost:8080/api/appointments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(appointment),
-    });
+    try {
+      const res = await fetch("http://localhost:8080/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(appointment),
+      });
 
-    if (res.ok) {
-      alert("Appointment scheduled!");
+      if (!res.ok) throw new Error();
+
+      const saved = await res.json();
+
+      setSuccessMsg(
+        " Appointment scheduled successfully. Your doctor will be notified."
+      );
+
+      setUpcoming((prev) =>
+        [...prev, saved].sort(
+          (a, b) => new Date(a.date) - new Date(b.date)
+        )
+      );
+
       setDate("");
       setReason("");
       setDoctorId("");
-    } else {
-      alert("Failed to schedule appointment.");
+
+      // auto-hide success
+      setTimeout(() => setSuccessMsg(""), 4000);
+    } catch {
+      setErrorMsg(" Failed to schedule appointment. Please try again.");
     }
   };
 
@@ -75,10 +92,8 @@ export default function ScheduleAppointment() {
       <div className="content-area">
         <PatientHeader user={user} />
 
-        {/* APPOINTMENT FORM*/}
         <div className="appointment-wrapper">
           <div className="appointment-card">
-
             <div className="appointment-illustration">
               <img
                 src="https://cdn-icons-png.flaticon.com/512/3209/3209265.png"
@@ -91,8 +106,13 @@ export default function ScheduleAppointment() {
               <h2>Schedule Appointment</h2>
               <p>Book an appointment with your preferred doctor.</p>
 
-              <form onSubmit={handleSchedule}>
+              {/*  feedback messages */}
+              {successMsg && (
+                <div className="form-success">{successMsg}</div>
+              )}
+              {errorMsg && <div className="form-error">{errorMsg}</div>}
 
+              <form onSubmit={handleSchedule}>
                 <div className="form-group">
                   <label>Date & Time</label>
                   <input
@@ -158,7 +178,7 @@ export default function ScheduleAppointment() {
           </div>
         </div>
 
-        {/*UPCOMING APPOINTMENTS SECTION */}
+        {/* UPCOMING */}
         <div className="upcoming-section">
           <h3>Your Upcoming Appointments</h3>
 
@@ -169,16 +189,13 @@ export default function ScheduleAppointment() {
               {upcoming.map((a) => (
                 <div key={a.id} className="upcoming-card">
                   <strong>{new Date(a.date).toLocaleString()}</strong>
-                  <span>
-                    Doctor: {a.doctor?.name || "Unknown Doctor"}
-                  </span>
+                  <span>Doctor: {a.doctor?.name}</span>
                   <span>Status: {a.status}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

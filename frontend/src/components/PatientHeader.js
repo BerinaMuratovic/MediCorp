@@ -6,46 +6,66 @@ export default function PatientHeader({ user }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
-
   const dropdownRef = useRef(null);
 
- 
+  const getDashboardRoute = () => {
+    if (!user) return "/";
+    if (user.role === "ADMIN") return "/admin-dashboard";
+    if (user.role === "DOCTOR") return "/doctor-dashboard";
+    return "/patient-dashboard";
+  };
+
+  const getProfileRoute = () => {
+    if (!user) return "/";
+    if (user.role === "ADMIN") return "/admin/profile";
+    if (user.role === "DOCTOR") return "/doctor/profile";
+    return "/patient-profile";
+  };
+
+
   useEffect(() => {
     if (!user) return;
 
     fetch(`http://localhost:8080/api/notifications/user/${user.id}`)
       .then((res) => res.json())
-      .then((data) => setNotifications(data))
-      .catch((err) => console.error("Error fetching notifications:", err));
+      .then(setNotifications)
+      .catch(() => {});
   }, [user]);
 
- 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  if (!user) return null; 
 
   return (
     <header className="patient-header">
-      <div className="logo" onClick={() => navigate("/patient-dashboard")}>
-        MediCorp
+      {/* LOGO */}
+      <div
+        className="logo"
+        style={{ cursor: "pointer" }}
+        onClick={() => navigate(getDashboardRoute())}
+      >
+       
       </div>
 
       <div className="header-right">
-
-        {/* NOTIFICATION BELL */}
-        <div
-          className="notif-wrapper"
-          ref={dropdownRef}
-        >
+        {/* NOTIFICATIONS */}
+        <div className="notif-wrapper" ref={dropdownRef}>
           <button
             className="notif-btn"
-            onClick={() => setOpen((prev) => !prev)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen((prev) => !prev);
+            }}
           >
             🔔
             {notifications.some((n) => !n.readStatus) && (
@@ -53,7 +73,6 @@ export default function PatientHeader({ user }) {
             )}
           </button>
 
-          {/* DROPDOWN PANEL */}
           {open && (
             <div className="notif-dropdown">
               <h4>Notifications</h4>
@@ -63,14 +82,22 @@ export default function PatientHeader({ user }) {
               ) : (
                 <ul>
                   {notifications
-                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .sort(
+                      (a, b) =>
+                        new Date(b.createdAt) -
+                        new Date(a.createdAt)
+                    )
                     .map((n) => (
                       <li
                         key={n.id}
-                        className={`notif-item ${!n.readStatus ? "unread" : ""}`}
+                        className={`notif-item ${
+                          !n.readStatus ? "unread" : ""
+                        }`}
                       >
                         <strong>{n.message}</strong>
-                        <span>{new Date(n.createdAt).toLocaleString()}</span>
+                        <span>
+                          {new Date(n.createdAt).toLocaleString()}
+                        </span>
                       </li>
                     ))}
                 </ul>
@@ -79,11 +106,18 @@ export default function PatientHeader({ user }) {
           )}
         </div>
 
-        {/* USER PROFILE */}
-        <div className="user-box" onClick={() => navigate("/patient-profile")}>
-          <span>{user?.name}</span>
+        {/* PROFILE CLICK */}
+        <div
+          className="user-box"
+          style={{ cursor: "pointer" }}
+          onClick={() => navigate(getProfileRoute())}
+        >
+          <span>{user.name}</span>
           <img
-            src="https://cdn-icons-png.flaticon.com/512/847/847969.png"
+            src={
+              user.profilePic ||
+              "https://cdn-icons-png.flaticon.com/512/847/847969.png"
+            }
             alt="profile"
             className="profile-pic"
           />

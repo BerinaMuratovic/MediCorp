@@ -4,6 +4,7 @@ import com.berina.MedicalRecordsApp.model.Diagnosis;
 import com.berina.MedicalRecordsApp.model.Notification;
 import com.berina.MedicalRecordsApp.repository.DiagnosisRepository;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -14,7 +15,10 @@ public class DiagnosisService {
     private final DiagnosisRepository diagnosisRepository;
     private final NotificationService notificationService;
 
-    public DiagnosisService(DiagnosisRepository diagnosisRepository, NotificationService notificationService) {
+    public DiagnosisService(
+            DiagnosisRepository diagnosisRepository,
+            NotificationService notificationService
+    ) {
         this.diagnosisRepository = diagnosisRepository;
         this.notificationService = notificationService;
     }
@@ -35,15 +39,19 @@ public class DiagnosisService {
         return diagnosisRepository.findByDoctor_Id(doctorId);
     }
 
+    /* ===== SAVE / UPDATE ===== */
 
     public Diagnosis saveDiagnosis(Diagnosis diagnosis) {
-        boolean isUpdate = (diagnosis.getId() != null && diagnosisRepository.existsById(diagnosis.getId()));
+        boolean isUpdate =
+                diagnosis.getId() != null &&
+                        diagnosisRepository.existsById(diagnosis.getId());
+
         Diagnosis saved = diagnosisRepository.save(diagnosis);
 
         if (saved.getPatient() != null) {
             String message = isUpdate
-                    ? "Diagnosis updated: " + saved.getDescription()
-                    : "A new diagnosis was added: " + saved.getDescription();
+                    ? "Diagnosis updated: " + saved.getTitle()
+                    : "New diagnosis added: " + saved.getTitle();
 
             Notification notification = new Notification(
                     message,
@@ -51,21 +59,21 @@ public class DiagnosisService {
                     false,
                     saved.getPatient()
             );
+
             notificationService.saveNotification(notification);
         }
 
         return saved;
     }
 
+    /* ===== DELETE ===== */
 
     public void deleteDiagnosis(Long id) {
-        Optional<Diagnosis> existing = diagnosisRepository.findById(id);
-        if (existing.isPresent()) {
-            Diagnosis diagnosis = existing.get();
+        diagnosisRepository.findById(id).ifPresent(diagnosis -> {
 
             if (diagnosis.getPatient() != null) {
                 Notification notification = new Notification(
-                        "Diagnosis removed: " + diagnosis.getDescription(),
+                        "Diagnosis removed: " + diagnosis.getTitle(),
                         LocalDateTime.now(),
                         false,
                         diagnosis.getPatient()
@@ -74,6 +82,6 @@ public class DiagnosisService {
             }
 
             diagnosisRepository.deleteById(id);
-        }
+        });
     }
 }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import img from "../assets/medicorp.png";
 import useInputValidation from "../hooks/useInputValidation";
@@ -7,6 +7,9 @@ import "../style.css";
 
 export default function Login({ onLoginSuccess }) {
   const navigate = useNavigate();
+
+  const [message, setMessage] = useState(null);
+  const [isError, setIsError] = useState(false);
 
   const {
     value: emailInput,
@@ -30,7 +33,8 @@ export default function Login({ onLoginSuccess }) {
     event.preventDefault();
 
     if (!isEmailValid || !isPasswordValid) {
-      alert("Please enter a valid email and password.");
+      setMessage("Please enter a valid email and password.");
+      setIsError(true);
       return;
     }
 
@@ -41,19 +45,22 @@ export default function Login({ onLoginSuccess }) {
       });
 
       const user = response.data;
-      console.log("Login success:", user);
-      alert(`Welcome ${user.name}! Role: ${user.role}`);
+
+      setMessage(`Welcome back, ${user.name}!`);
+      setIsError(false);
 
       localStorage.setItem("user", JSON.stringify(user));
       if (onLoginSuccess) onLoginSuccess(user);
 
-      
-      if (user.role === "ADMIN") navigate("/admin-dashboard");
-      else if (user.role === "DOCTOR") navigate("/doctor-dashboard");
-      else navigate("/patient-dashboard");
+      setTimeout(() => {
+        if (user.role === "ADMIN") navigate("/admin-dashboard");
+        else if (user.role === "DOCTOR") navigate("/doctor-dashboard");
+        else navigate("/patient-dashboard");
+      }, 1000);
+
     } catch (error) {
-      console.error("Login error:", error);
-      alert("Invalid email or password.");
+      setMessage("Invalid email or password.");
+      setIsError(true);
     }
 
     resetEmailInput();
@@ -63,12 +70,19 @@ export default function Login({ onLoginSuccess }) {
   return (
     <div className="base-container">
       <div className="header">LOGIN</div>
+
       <div className="content">
         <div className="image">
           <img src={img} alt="login" className="form-image" />
         </div>
 
         <div className="form">
+          {message && (
+            <p className={`form-message ${isError ? "error" : "success"}`}>
+              {message}
+            </p>
+          )}
+
           <div className="form-group">
             <input
               type="email"
@@ -77,7 +91,7 @@ export default function Login({ onLoginSuccess }) {
               onChange={emailChangeHandler}
               onBlur={emailBlurHandler}
             />
-            {emailInputError && <p className="error">Enter a valid email</p>}
+            {emailInputError && <p className="error-text">Enter a valid email</p>}
           </div>
 
           <div className="form-group">
@@ -88,13 +102,15 @@ export default function Login({ onLoginSuccess }) {
               onChange={passwordChangeHandler}
               onBlur={passwordBlurHandler}
             />
-            {passwordInputError && <p className="error">Password too short</p>}
+            {passwordInputError && (
+              <p className="error-text">Password must be at least 6 characters</p>
+            )}
           </div>
         </div>
       </div>
 
       <div className="footer">
-        <button className="btn" type="submit" onClick={loginHandler}>
+        <button className="btn" onClick={loginHandler}>
           Login
         </button>
       </div>
