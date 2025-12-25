@@ -2,25 +2,36 @@ package com.berina.MedicalRecordsApp.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
+@Table(name = "user") // IMPORTANT for MySQL
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String name;
+
+    @Column(nullable = false, unique = true)
     private String email;
 
     private String profilePic;
 
+    @Column(nullable = false)
     private String password;
 
     @Enumerated(EnumType.STRING)
-    private Role role; // DOCTOR, PATIENT, ADMIN
+    @Column(nullable = false)
+    private Role role;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL)
     @JsonIgnore
@@ -32,15 +43,16 @@ public class User {
 
     public User() {}
 
-    public User(String name, String email, String password, Role role) {
-        this.name = name;
-        this.email = email;
-        this.password = password;
-        this.role = role;
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
 
+    /* ===== GETTERS & SETTERS ===== */
+
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -54,18 +66,8 @@ public class User {
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
 
-    public Set<Appointment> getPatientAppointments() { return patientAppointments; }
-    public void setPatientAppointments(Set<Appointment> patientAppointments) { this.patientAppointments = patientAppointments; }
+    public String getProfilePic() { return profilePic; }
+    public void setProfilePic(String profilePic) { this.profilePic = profilePic; }
 
-    public Set<Appointment> getDoctorAppointments() { return doctorAppointments; }
-    public void setDoctorAppointments(Set<Appointment> doctorAppointments) { this.doctorAppointments = doctorAppointments; }
-
-
-    public String getProfilePic() {
-        return profilePic;
-    }
-
-    public void setProfilePic(String profilePic) {
-        this.profilePic = profilePic;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 }

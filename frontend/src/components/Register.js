@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import img from "../assets/medicorp.png";
-import "../style.css";
 import useInputValidation from "../hooks/useInputValidation";
 import api from "../services/api";
+import "../style.css";
 
-export default function Register({ onRegisterSuccess }) {
+export default function Register() {
   const navigate = useNavigate();
-  const [isFormValid, setIsFormValid] = useState(true);
+
+  const [message, setMessage] = useState(null);
+  const [isError, setIsError] = useState(false);
   const [role, setRole] = useState("PATIENT");
 
   const {
@@ -40,34 +42,33 @@ export default function Register({ onRegisterSuccess }) {
   const registerHandler = async (event) => {
     event.preventDefault();
 
-    const valid = isNameValid && isPasswordValid && isEmailValid;
-    setIsFormValid(valid);
-
-    if (!valid) {
-      alert("Please fill in all fields correctly.");
+    if (!isNameValid || !isEmailValid || !isPasswordValid) {
+      setMessage("Please fill in all fields correctly.");
+      setIsError(true);
       return;
     }
 
     try {
-      const response = await api.post("/users/register", {
+      await api.post("/users/register", {
         name: nameInput,
         email: emailInput,
         password: passwordInput,
         role: role,
       });
 
-      alert("Registration successful!");
-      const user = response.data;
-      localStorage.setItem("user", JSON.stringify(user));
+      setMessage("Registration successful! Redirecting...");
+      setIsError(false);
 
-      
-      if (role === "ADMIN") navigate("/admin-dashboard");
-      else if (role === "DOCTOR") navigate("/doctor-dashboard");
-      else navigate("/patient-dashboard");
+      setTimeout(() => navigate("/"), 1500);
+
     } catch (error) {
-      console.error("Registration failed:", error);
-      alert("Registration failed. Please try again.");
+      setMessage("Registration failed. Email may already exist.");
+      setIsError(true);
     }
+
+    resetNameInput();
+    resetEmailInput();
+    resetPasswordInput();
   };
 
   return (
@@ -80,7 +81,11 @@ export default function Register({ onRegisterSuccess }) {
         </div>
 
         <div className="form">
-          {!isFormValid && <p className="error">Form Invalid. Try again.</p>}
+          {message && (
+            <p className={`form-message ${isError ? "error" : "success"}`}>
+              {message}
+            </p>
+          )}
 
           <div className="form-group">
             <input
@@ -90,7 +95,7 @@ export default function Register({ onRegisterSuccess }) {
               onChange={nameChangeHandler}
               onBlur={nameBlurHandler}
             />
-            {nameInputError && <p className="error">Enter a valid name</p>}
+            {nameInputError && <p className="error-text">Enter a valid name</p>}
           </div>
 
           <div className="form-group">
@@ -101,7 +106,7 @@ export default function Register({ onRegisterSuccess }) {
               onChange={emailChangeHandler}
               onBlur={emailBlurHandler}
             />
-            {emailInputError && <p className="error">Enter a valid email</p>}
+            {emailInputError && <p className="error-text">Enter a valid email</p>}
           </div>
 
           <div className="form-group">
@@ -113,7 +118,7 @@ export default function Register({ onRegisterSuccess }) {
               onBlur={passwordBlurHandler}
             />
             {passwordInputError && (
-              <p className="error">Password must be at least 7 characters</p>
+              <p className="error-text">Password must be at least 7 characters</p>
             )}
           </div>
 
@@ -128,7 +133,7 @@ export default function Register({ onRegisterSuccess }) {
       </div>
 
       <div className="footer">
-        <button className="btn" type="submit" onClick={registerHandler}>
+        <button className="btn" onClick={registerHandler}>
           Register
         </button>
       </div>
